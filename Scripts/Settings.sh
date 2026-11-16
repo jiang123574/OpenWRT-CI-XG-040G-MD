@@ -79,3 +79,51 @@ fi
 sed -i 's/ucidef_set_interface_lan "lan1 lan2 lan3 lan4"/ucidef_set_interfaces_lan_wan "lan1 lan2 lan3" "lan4"/g' target/linux/airoha/an7581/base-files/etc/board.d/02_network
 sed -i 's/interrupts.*//g' target/linux/airoha/dts/an7581-nokia_xg-040g-md-common.dtsi
 
+
+#==== 追加：生成 XG-140G-TF 的 UBI 变体 ====
+# 源码树里 TF 的 UBI 设备只有 nokia_xg-040g-tf-ubi。040G-TF 与 140G-TF 是同一套硬件
+# （上游 nokia_xg-140g-tf 的 DEVICE_ALT0 即为 XG-040G-TF），这里按项目惯例补一份独立
+# DTS 与设备定义，让产物文件名和 model 与 140G-TF 对上，硬件描述完全复用 TF 基类。
+if [[ "${WRT_CONFIG}" == "AIROHA-ONU" ]] && [ -d target/linux/airoha ]; then
+	if [ ! -f target/linux/airoha/dts/an7581-nokia_xg-140g-tf-ubi.dts ]; then
+		cat > target/linux/airoha/dts/an7581-nokia_xg-140g-tf-ubi.dts <<'WRT_DTS'
+// SPDX-License-Identifier: GPL-2.0-only OR MIT
+
+#include "an7581-nokia_xg-040g-tf-common.dtsi"
+#include "an758x-nokia_xg-040g-ubi-parts.dtsi"
+
+/ {
+	model = "Nokia Bell XG-140G-TF (UBI)";
+	compatible = "nokia,xg-140g-tf-ubi", "airoha,an7581",
+		     "airoha,en7581";
+};
+WRT_DTS
+		echo "added dts an7581-nokia_xg-140g-tf-ubi.dts"
+	fi
+
+	if ! grep -q "nokia_xg-140g-tf-ubi" target/linux/airoha/image/an7581.mk; then
+		cat >> target/linux/airoha/image/an7581.mk <<'WRT_MK'
+
+define Device/nokia_xg-140g-tf-ubi
+  $(call Device/nokia_xg-040g-tf-common)
+  DEVICE_MODEL := XG-140G-TF
+  DEVICE_VARIANT := (UBI)
+  DEVICE_DTS := an7581-nokia_xg-140g-tf-ubi
+  UBOOTENV_IN_UBI := 1
+  KERNEL_IN_UBI := 1
+  KERNEL := kernel-bin | gzip
+  KERNEL_INITRAMFS := kernel-bin | lzma | \
+	fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb with-initrd | pad-to 128k
+  KERNEL_INITRAMFS_SUFFIX := -recovery.itb
+  IMAGES := sysupgrade.itb
+  IMAGE/sysupgrade.itb := append-kernel | \
+	fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | \
+	append-metadata
+  DEVICE_PACKAGES += fitblk
+endef
+TARGET_DEVICES += nokia_xg-140g-tf-ubi
+WRT_MK
+		echo "CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_nokia_xg-140g-tf-ubi=y" >> .config
+		echo "added Device/nokia_xg-140g-tf-ubi"
+	fi
+fi
