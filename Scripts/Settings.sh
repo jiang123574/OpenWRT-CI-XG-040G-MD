@@ -80,6 +80,13 @@ sed -i 's/ucidef_set_interface_lan "lan1 lan2 lan3 lan4"/ucidef_set_interfaces_l
 sed -i 's/interrupts.*//g' target/linux/airoha/dts/an7581-nokia_xg-040g-md-common.dtsi
 
 
+#==== 修复：禁用 XRAY_CORE_NAIVE ====
+# cronet-go 的 musl/arm64 cgo 声明含 "-l:libcronet.a"，被 Go 的 #cgo LDFLAGS
+# 安全校验拒绝（invalid flag in #cgo LDFLAGS），导致 xray-core 编译必然失败。
+# 该选项在 x86_64 编译机上默认开启。禁用后 xray-core 仍正常编译，ssr-plus 可用，
+# 仅失去 NaiveProxy 出站（cronet）能力，Naive 入站不受影响。
+echo "# CONFIG_XRAY_CORE_NAIVE is not set" >> .config
+
 #==== 追加：生成 XG-140G-TF 的 UBI 变体 ====
 # 源码树里 TF 的 UBI 设备只有 nokia_xg-040g-tf-ubi。040G-TF 与 140G-TF 是同一套硬件
 # （上游 nokia_xg-140g-tf 的 DEVICE_ALT0 即为 XG-040G-TF），这里按项目惯例补一份独立
