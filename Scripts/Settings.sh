@@ -121,7 +121,7 @@ WRT_DTS
 		cat >> target/linux/airoha/image/an7581.mk <<'WRT_MK'
 
 define Device/nokia_xg-140g-tf-ubi
-  $(call Device/nokia_xg-040g-md-common)
+  $(call Device/nokia_xg-040g-tf-common)
   DEVICE_MODEL := XG-140G-TF
   DEVICE_VARIANT := (UBI)
   DEVICE_DTS := an7581-nokia_xg-140g-tf-ubi
@@ -142,4 +142,26 @@ WRT_MK
 		echo "CONFIG_TARGET_DEVICE_airoha_an7581_DEVICE_nokia_xg-140g-tf-ubi=y" >> .config
 		echo "added Device/nokia_xg-140g-tf-ubi"
 	fi
+
+	#==== 修复：补齐 LAN 口 DHCP 地址池（对齐 040G-MD）====
+	# ponwrt 这套 base-files 的 config_generate 只生成 network，不生成 dhcp，
+	# 预置的 /etc/config/dhcp 里 lan 段缺 start/limit/leasetime，导致 dnsmasq
+	# 不生成 dhcp-range、无法下发 IP（必须手动设静态 IP 才能进管理页）。
+	# 这里放一个 uci-defaults 脚本，首次开机在 config_generate 之后补齐这三项，
+	# 与 040G-MD 官方固件一致（start=100 limit=150 leasetime=12h）。
+	UDEF_DIR="package/base-files/files/etc/uci-defaults"
+	mkdir -p "$UDEF_DIR"
+	cat > "$UDEF_DIR/99-fix-dhcp-lan" <<'WRT_UCI'
+#!/bin/sh
+# 补齐 LAN DHCP 地址池（ponwrt base-files 默认缺失，对齐 040G-MD）
+[ -f /etc/config/dhcp ] || exit 0
+uci -q get dhcp.lan.start    >/dev/null || uci set dhcp.lan.start='100'
+uci -q get dhcp.lan.limit    >/dev/null || uci set dhcp.lan.limit='150'
+uci -q get dhcp.lan.leasetime >/dev/null || uci set dhcp.lan.leasetime='12h'
+uci -q get dhcp.lan.dhcpv4   >/dev/null || uci set dhcp.lan.dhcpv4='server'
+uci -q changes dhcp >/dev/null && uci commit dhcp
+exit 0
+WRT_UCI
+		chmod +x "$UDEF_DIR/99-fix-dhcp-lan"
+		echo "added uci-defaults 99-fix-dhcp-lan"
 fi
