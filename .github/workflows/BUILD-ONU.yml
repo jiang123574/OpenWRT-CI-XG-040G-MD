@@ -3,6 +3,9 @@
 name: BUILD-ONU
 
 on:
+  push:
+    tags:
+      - 'build-tf'
   workflow_dispatch:
     inputs:
       PACKAGE:
