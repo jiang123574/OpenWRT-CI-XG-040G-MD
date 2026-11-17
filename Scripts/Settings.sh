@@ -108,6 +108,15 @@ WRT_DTS
 		echo "added dts an7581-nokia_xg-140g-tf-ubi.dts"
 	fi
 
+	# 让 02_network 把新设备的 compatible 识别为 TF 机型，否则会掉进
+	# "*" 分支导致网口不初始化、DHCP 无法下发 IP。复用 040G-TF-ubi 的
+	# 4 LAN + pon0 上行配置。
+	NW="target/linux/airoha/an7581/base-files/etc/board.d/02_network"
+	if [ -f "$NW" ] && ! grep -q "nokia,xg-140g-tf-ubi)" "$NW"; then
+		sed -i 's/nokia,xg-040g-tf-ubi)/nokia,xg-040g-tf-ubi |\\\n\tnokia,xg-140g-tf-ubi)/' "$NW"
+		echo "patched 02_network for nokia,xg-140g-tf-ubi"
+	fi
+
 	if ! grep -q "nokia_xg-140g-tf-ubi" target/linux/airoha/image/an7581.mk; then
 		cat >> target/linux/airoha/image/an7581.mk <<'WRT_MK'
 
