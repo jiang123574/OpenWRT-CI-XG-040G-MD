@@ -121,7 +121,7 @@ WRT_DTS
 		cat >> target/linux/airoha/image/an7581.mk <<'WRT_MK'
 
 define Device/nokia_xg-140g-tf-ubi
-  $(call Device/nokia_xg-040g-tf-common)
+  $(call Device/nokia_xg-040g-md-common)
   DEVICE_MODEL := XG-140G-TF
   DEVICE_VARIANT := (UBI)
   DEVICE_DTS := an7581-nokia_xg-140g-tf-ubi
